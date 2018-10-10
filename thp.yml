@@ -1,0 +1,25 @@
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: thp
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: docker-for-desktop
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 1
+  volumes:
+  - name: sys
+    hostPath:
+      path: /sys
+  initContainers:
+  - name: disable
+    image: busybox
+    volumeMounts:
+    - name: sys
+      mountPath: /host-sys
+    command: ["sh", "-c", "echo never > /host-sys/kernel/mm/transparent_hugepage/enabled"]
+  containers:
+  - name: thp
+    image: busybox
+    command: ["cat", "/sys/kernel/mm/transparent_hugepage/enabled"]

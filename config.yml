@@ -1,0 +1,48 @@
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: redis
+  labels:
+    app: redis
+type: Opaque
+data:
+  password: YWRtaW4=
+  # echo -n admin | base64
+  # echo -n YWRtaW4= | base64 -D
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: redis
+  namespace: default
+  labels:
+    app: redis
+data:
+  redis.conf: |
+    # maxmemory 2mb
+    # maxmemory-policy allkeys-lru
+    protected-mode no
+    cluster-enabled no
+    dir /data
+    appendonly no
+    save ""
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: redis-cluster
+  namespace: default
+  labels:
+    app: redis-cluster
+data:
+  redis.conf: |
+    # maxmemory 2mb
+    # maxmemory-policy allkeys-lru
+    protected-mode no
+    cluster-enabled yes
+    dir /data
+    appendonly yes
+    # save ""

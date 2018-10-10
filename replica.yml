@@ -1,0 +1,89 @@
+---
+kind: ReplicaSet
+apiVersion: apps/v1
+metadata:
+  name: redis-replica
+  labels:
+    app: redis-replica
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-replica
+    # matchExpressions:
+    # - {key: app, operator: In, values: [redis]}
+  template:
+    metadata:
+      labels:
+        app: redis-replica
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - docker-for-desktop
+      # securityContext:
+      #   sysctls:
+      #   - name: net.core.somaxconn
+      #     value: "1024"
+      containers:
+      - name: redis
+        image: redis:5.0-rc
+        resources:
+          limits:
+            cpu: "0.1"
+            memory: 64Mi
+        ports:
+        - containerPort: 6379
+          name: client
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: "PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: redis
+              key: password
+        command: ["redis-server"]
+        args:
+        - "/conf/redis.conf"
+        - "--dbfilename"
+        - "$(HOSTNAME).rdb"
+        - "--appendfilename"
+        - "$(HOSTNAME).aof"
+        # - "--requirepass"
+        # - "$(PASSWORD)"
+        readinessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 1
+          timeoutSeconds: 3
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "redis-cli -h $(hostname) ping"
+          initialDelaySeconds: 3
+          periodSeconds: 3
+        volumeMounts:
+        - name: conf
+          mountPath: /conf
+          readOnly: false
+        - name: data
+          mountPath: /data
+          readOnly: false
+      volumes:
+      - name: conf
+        configMap:
+          name: redis
+          # defaultMode: 0755
+      - name: data
+        persistentVolumeClaim:
+          claimName: redis
