@@ -105,3 +105,5 @@ redis-cli
 # kubectl port-forward redis-$2 6379:6379
 # redis-cli --cluster import 127.0.0.1:6379 --cluster-from 127.0.0.1:8379 --cluster-replace
 # redis-cli shutdown nosave
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#label
