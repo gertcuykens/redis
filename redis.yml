@@ -2,9 +2,9 @@
 kind: Pod
 apiVersion: v1
 metadata:
-  name: redis-1
+  name: redis
   labels:
-    app: redis
+    app: redis-master
 spec:
   affinity:
     nodeAffinity:
@@ -29,13 +29,7 @@ spec:
     ports:
     - containerPort: 6379
       name: client
-    - containerPort: 16379
-      name: cluster
     env:
-    - name: POD_IP
-      valueFrom:
-        fieldRef:
-          fieldPath: status.podIP
     - name: HOSTNAME
       valueFrom:
         fieldRef:
@@ -52,10 +46,6 @@ spec:
     - "$(HOSTNAME).rdb"
     - "--appendfilename"
     - "$(HOSTNAME).aof"
-    - "--cluster-config-file"
-    - "/data/$(HOSTNAME)"
-    - "--cluster-announce-ip"
-    - "$(POD_IP)"
     # - "--requirepass"
     # - "$(PASSWORD)"
     readinessProbe:
@@ -81,7 +71,7 @@ spec:
   volumes:
   - name: conf
     configMap:
-      name: redis-cluster
+      name: redis
       # defaultMode: 0755
   - name: data
     persistentVolumeClaim:

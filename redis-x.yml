@@ -1,10 +1,32 @@
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: redis-${NR}
+  labels:
+    app: redis
+    node: "${NR}"
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: client
+  - port: 16379
+    targetPort: 16379
+    name: cluster
+  clusterIP: None
+  selector:
+    app: redis
+    node: "${NR}"
+
+---
 kind: Pod
 apiVersion: v1
 metadata:
   name: redis-${NR}
   labels:
     app: redis
+    node: "${NR}"
 spec:
   affinity:
     nodeAffinity:

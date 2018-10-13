@@ -2,16 +2,11 @@
 
 if [ "$1" == "apply" ]
 then
-    cat redis-x.yml | (export NR=0; ./template.sh) > redis-0.yml
-    cat redis-x.yml | (export NR=1; ./template.sh) > redis-1.yml
-    cat redis-x.yml | (export NR=2; ./template.sh) > redis-2.yml
-    cat redis-x.yml | (export NR=3; ./template.sh) > redis-3.yml
-    cat redis-x.yml | (export NR=4; ./template.sh) > redis-4.yml
-    cat redis-x.yml | (export NR=5; ./template.sh) > redis-5.yml
     for i in {0..5}
     do
+        cat redis-x.yml | (export NR=$i; ./template.sh) > tmp/redis-$i.yml
         POD=redis-$i
-        kubectl apply -f $POD.yml
+        kubectl apply -f tmp/$POD.yml
     done
     exit 0
 fi
@@ -21,7 +16,8 @@ then
     if [ "$2" == "" ]; then kubectl delete pod -l app=redis; rm -r /tmp/redis*; exit 0; fi
     POD=redis-${2:-0}
     kubectl delete pod $POD
-    # rm -r /tmp/$POD*;
+    # kubectl delete svc $POD
+    # rm -r /tmp/$POD*
     exit 0
 fi
 
@@ -106,6 +102,26 @@ then
     exit 0
 fi
 
+if [ "$1" == "forward" ]
+then
+    I=0
+    P=6379
+    PODS=$(kubectl get pods -l app=redis | awk 'NR>1 {print $1}')
+    for POD in $PODS; do
+        echo -n "$POD "
+        kubectl port-forward redis-$I $P:6379 &
+        ((++I))
+        ((++P))
+    done
+    exit 0
+fi
+
+if [ "$1" == "kill" ]
+then
+    kill -SIGTERM $(pgrep -i kubectl)
+    exit 0
+fi
+
 if [ "$1" == "master" ] || [ "$1" == "slave" ]
 then
     SLAVE="--cluster-slave"
@@ -166,10 +182,32 @@ then
     exit 0
 fi
 
-# if [ "$1" == "restore" ]
-# then
-#     exit 0
-# fi
+if [ "$1" == "restore" ]
+then
+    NAMESPACE=${2:-default}
+    PODS=$(kubectl get pods -l app=redis | awk 'NR>1 {print $1}')
+    for POD in $PODS; do
+        echo "$POD"
+        read  -n 1 -p "Press key when ready: " input
+        kubectl delete pod redis
+        read  -n 1 -p "Press key when ready: " input
+        kubectl apply -f redis.yml
+        read  -n 1 -p "Press key when ready: " input
+        kubectl cp backup/$POD.rdb $NAMESPACE/redis:redis.rdb
+        kubectl exec -it redis -- redis-cli --cluster import $POD:6379 --cluster-from redis:6379 --cluster-replace # copy
+    done
+    # for i in "${!PODS[@]}"; do
+    #     printf "%s\t%s\n" "$i" "${PODS[$i]}"
+    # done
+    exit 0
+fi
+
+if [ "$1" == "import" ]
+then
+    POD=redis-${2:-0}
+    kubectl exec -it $POD -- redis-cli --cluster import $POD:6379 --cluster-from redis:6379 --cluster-replace # copy
+    exit 0
+fi
 
 if [ "$1" == "cli" ]
 then
@@ -200,3 +238,5 @@ echo "reshard    -- Reshard Redis master <POD_NR> to Redis master <POD_NR>."
 echo "backup     -- Copy rdb files from kubernets to backup folder."
 echo "restore    -- Restore rdb files from backup folder."
 echo "cli        -- Redis cli <POD_NR>."
+
+# kubectl port-forward svc/redis 6379:6379

@@ -1,0 +1,107 @@
+build-essential
+libjemalloc-dev
+liblua5.1-0-dev
+
+wget http://download.redis.io/releases/redis-stable.tar.gz
+tar xzf redis-stable.tar.gz
+
+make distclean
+make
+
+install_server.sh
+service redis_6379
+
+redis-cli -h 127.0.0.1 -p 6379 ping
+
+ssh -N root@vps142521.ovh.net -L 127.0.0.1:6379:localhost:6379
+
+
+#########################################
+
+[Unit]
+Description=Disable Transparent Huge Pages
+Documentation=https://redis.io/topics/latency
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/sh -c "/usr/bin/echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled"
+ExecStart=/usr/bin/sh -c "/usr/bin/echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag"
+
+[Install]
+WantedBy=multi-user.target
+
+########################################
+
+echo "your-redis-password" | sha256sum
+requirepass a453f41f929a3297289b68788b91d1454d91c71613416d14020c5206cc35579e
+
+################################
+
+curl -OL https://k8s.io/examples/pods/config/redis-config
+kubectl create configmap example-redis-config --from-file=redis-config
+kubectl get configmap example-redis-config -o yaml
+
+kubectl create -f https://k8s.io/examples/pods/config/redis-pod.yaml
+
+###############################
+
+# https://github.com/antirez/redis/blob/unstable/utils/create-cluster/create-cluster
+
+###################################
+
+https://redis.io/topics/cluster-tutorial
+https://redis.io/topics/cluster-spec
+https://redis.io/commands/cluster-nodes
+https://redis.io/topics/replication
+https://redis.io/topics/persistence
+
+auth insert-redis-password-here
+CONFIG
+
+SAVE
+BGSAVE
+BGREWRITEAOF
+
+########################################
+
+screen ~/Library/Containers/com.docker.docker/Data/com.docker.driver.amd64-linux/tty
+https://stackoverflow.com/questions/4847691/how-do-i-get-out-of-a-screen-without-typing-exit
+C-A C-\
+screen -r
+
+/etc/rc.local
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+
+/etc/sysctl.conf
+sysctl -w vm.max_map_count=262144
+sysctl -w vm.overcommit_memory=1
+sysctl -w net.core.somaxconn=1024
+sysctl -n kernel.hostname
+sysctl -a | grep somaxconn
+
+cat /proc/sys/net/core/somaxconn
+
+docker run --tcp-backlog 128 --sysctl --privileged
+
+##########################################
+
+#!/bin/sh
+NODES="/data/nodes"
+if [ -f ${NODES} ]; then
+  if [ -z "${POD_IP}" ]; then
+    echo "Unable to determine Pod IP address!"
+    exit 1
+  fi
+  echo "Updating my IP to ${POD_IP} in ${NODES}"
+  sed -i.bak -e '/myself/ s/[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}/'${POD_IP}'/' ${NODES}
+fi
+exec "$@"
+
+##############################################
+
+redis-server --dbfilename backup-$2.rdb --dir /tmp --daemonize yes
+redis-cli
+# kubectl port-forward redis-$2 6379:6379
+# redis-cli --cluster import 127.0.0.1:6379 --cluster-from 127.0.0.1:8379 --cluster-replace
+# redis-cli shutdown nosave

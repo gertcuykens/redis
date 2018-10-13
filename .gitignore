@@ -1,2 +1,7 @@
 backup
+tmp
+vendor
+go.mod
+go.sum
+redis
 *.gz
